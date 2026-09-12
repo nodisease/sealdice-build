@@ -1,0 +1,40 @@
+name: 更新 core 指针
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+
+      - name: 指向修改后的 core
+        env:
+          CORE_SHA: 311613a31aae7b945aed00d7ad546d2eed3d1283
+        run: |
+          set -euo pipefail
+
+          git submodule set-url sealdice-core \
+            https://github.com/nodisease/sealdice-core.git
+
+          git submodule update --init sealdice-core
+          git -C sealdice-core fetch origin "$CORE_SHA"
+          git -C sealdice-core checkout --detach "$CORE_SHA"
+
+          git add .gitmodules sealdice-core
+
+          if git diff --cached --quiet; then
+            echo "指针已经是目标版本"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "更新 core 指针以验证 helpdoc 修复"
+          git push origin HEAD:dev
